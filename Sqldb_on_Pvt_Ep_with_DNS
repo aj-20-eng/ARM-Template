@@ -1,0 +1,273 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "Central India",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "myVnet",
+      "metadata": {
+        "description": "Name of the Virtual Network."
+      }
+    },
+    "vnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Address prefix for the virtual network."
+      }
+    },
+    "subnet1Name": {
+      "type": "string",
+      "defaultValue": "mySubnet1",
+      "metadata": {
+        "description": "Name of the Subnet."
+      }
+    },    
+    "subnet1Prefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/24",
+      "metadata": {
+        "description": "Address prefix for the subnet."
+      }
+    },
+    "subnet2Name": {
+      "type": "string",
+      "defaultValue": "mySubnet2",
+      "metadata": {
+        "description": "Name of the Subnet."
+      }
+    },
+    "subnet2Prefix": {
+      "type": "string",
+      "defaultValue": "10.0.1.0/28",
+      "metadata": {
+        "description": "Address prefix for the subnet."
+      }
+    },
+    "subnet3Name": {
+      "type": "string",
+      "defaultValue": "mySubnet3",
+      "metadata": {
+        "description": "Name of the Subnet."
+      }
+    },
+    "subnet3Prefix": {
+      "type": "string",
+      "defaultValue": "10.0.2.0/28",
+      "metadata": {
+        "description": "Address prefix for the subnet."
+      }
+    },
+    "subnet4Name": {
+      "type": "string",
+      "defaultValue": "mySubnet4",
+      "metadata": {
+        "description": "Name of the Subnet."
+      }
+    },
+    "subnet4Prefix": {
+      "type": "string",
+      "defaultValue": "10.0.3.0/28",
+      "metadata": {
+        "description": "Address prefix for the subnet."
+      }
+    },
+    "sqlServerName": {
+      "type": "string",
+      "defaultValue": "SqlServer87abceamit",
+      "metadata": {
+        "description": "Name of the SQL Server."
+      }
+    },
+    "sqlAdminUsername": {
+      "type": "string",
+      "defaultValue": "sqladmin",
+      "metadata": {
+        "description": "SQL Server admin username."
+      }
+    },
+    "sqlAdminPassword": {
+      "type": "securestring",
+      "defaultValue": "EspireAdminP@$$w@rd",
+      "metadata": {
+        "description": "SQL Server admin password."
+      }
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "defaultValue": "myDatabase",
+      "metadata": {
+        "description": "Name of the SQL Database."
+      }
+    },
+    "sqlpepname": {
+      "type": "string",
+      "defaultValue": "sqp-pep-001",
+      "metadata": {
+        "description": "SQL Server admin username."
+      }
+    },            
+    "privateLinkConnection_name-sql": {
+        "type": "string",
+        "defaultValue": "privatelinkconn_web-fe",
+        "metadata":{
+          "description": "Link name between your Private Endpoint and your Web App"
+        }
+      },        
+    "privateDNSZone_name-sql": {
+        "type": "string",
+        "defaultValue": "privatelink.database.windows.net",
+        "metadata":{
+         "description": "Name must be privatelink.azurewebsites.net"
+        }
+      }
+  },
+  "variables": {},
+  
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnet1Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[parameters('subnet2Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet2Prefix')]"
+            }
+          },
+          {
+            "name": "[parameters('subnet3Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet3Prefix')]"
+            }
+          },
+          {
+            "name": "[parameters('subnet4Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet4Prefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2021-02-01-preview",
+      "name": "[parameters('sqlServerName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[parameters('sqlAdminUsername')]",
+        "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
+        "publicNetworkAccess": "Disabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2021-02-01-preview",
+      "name": "[concat(parameters('sqlServerName'), '/', parameters('sqlDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS",
+        "maxSizeBytes": 1073741824,
+        "sampleName": "AdventureWorksLT"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('sqlpepname')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnet1Name'))]"
+          
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[concat(parameters('sqlServerName'), '-plsc')]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]",
+              "groupIds": [
+                "sqlServer"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[parameters('privateDNSZone_name-sql')]",
+            "location": "global"            
+        },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2018-09-01",
+      "name": "[concat(parameters('privateDNSZone_name-sql'), '/', parameters('privateDNSZone_name-sql'), '-link')]",     
+   
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZone_Name-sql'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    },    
+    {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-03-01",
+            "name": "[concat(parameters('sqlpepname'),'/dnsgroupname')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+               "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDNSZone_name-sql'))]",
+               "[resourceId('Microsoft.Network/privateEndpoints' , parameters('sqlpepname'))]"
+             ],
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                             "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDNSZone_name-sql'))]"
+                        }
+                    }
+                ]
+            }
+        }
+   
+  ]
+}
